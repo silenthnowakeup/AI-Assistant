@@ -15,7 +15,7 @@ async def start_handler(message: Message):
     await message.answer("Привет! Отправь мне голосовое или текстовое сообщение, и я отвечу на любой вопрос.")
 
 
-# Сохранение голосового сообщения на диск
+# Сохранение голосового сообщения
 async def save_voice_message(voice: Voice, bot: Bot) -> str:
     file_path = f"{config.audio_files_folder}/{voice.file_id}.ogg"
     await bot.download(voice, file_path)
@@ -149,6 +149,5 @@ async def process_callback(callback_query: CallbackQuery, state: FSMContext, bot
         print(f"Ошибка при удалении сообщения: {e}")
 
 
-# Регистрация обработчиков
 def register_handlers(dp):
     dp.include_router(router)
