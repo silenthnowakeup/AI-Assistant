@@ -107,7 +107,7 @@ async def text_handler(message: Message, state: FSMContext):
 async def process_callback(callback_query: CallbackQuery, state: FSMContext):
     data = callback_query.data
     state_data = await state.get_data()
-    input_text = state_data['input_text']
+    input_text = state_data.get('input_text', '')  # Используем get() чтобы избежать KeyError
     message_timestamp = state_data['last_message_timestamp']
     response_messages, thread_id = await response(input_text, state, message_timestamp)
 
