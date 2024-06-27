@@ -14,8 +14,8 @@
 1. Клонируйте репозиторий:
 
 ```bash
-git clone https://github.com/ваш-репозиторий.git
-cd ваш-репозиторий
+git clone https://github.com/silenthnowakeup/AI-Assistant.git
+cd AI-Assistant
 ```
 
 2. Создайте виртуальное окружение и активируйте его:
