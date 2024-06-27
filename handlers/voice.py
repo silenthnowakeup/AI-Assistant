@@ -26,14 +26,11 @@ async def transcription(file_path: str) -> str:
     return transcription.text
 
 
-async def response(text: str, state, message_timestamp: int):
+async def response(text: str, state: FSMContext, message_timestamp: int):
     state_data = await state.get_data()
 
-    # Displaying "waiting" message
-    waiting_message = await state.bot.send_message(state.chat.id, "Processing...")
-
-    if "last_message_timestamp" in state_data and (
-            message_timestamp - state_data["last_message_timestamp"]) <= config.thread_lifetime_sec:
+    if (("last_message_timestamp" in state_data)
+            and ((message_timestamp - state_data["last_message_timestamp"]) <= config.thread_lifetime_sec)):
         thread_id = state_data["thread_id"]
     else:
         thread = await client.beta.threads.create()
@@ -59,9 +56,6 @@ async def response(text: str, state, message_timestamp: int):
     )
 
     messages = [{"id": raw_message.id, "text": raw_message.content[0].text.value} for raw_message in raw_messages.data]
-
-    # Deleting "waiting" message
-    await state.bot.delete_message(chat_id=state.chat.id, message_id=waiting_message.id)
 
     return messages, thread_id
 
