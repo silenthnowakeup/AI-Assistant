@@ -2,7 +2,7 @@ from aiofiles import os
 
 from aiogram import Router, F, Bot
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, Voice, FSInputFile, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, Voice, FSInputFile, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 import handlers.default
 from config import config
 from utils.openai_client import client, assistant_id
@@ -81,15 +81,16 @@ async def voice_handler(message: Message, bot: Bot, state: FSMContext):
     message_timestamp = int(message.date.timestamp())
     await state.update_data(last_message_timestamp=message_timestamp, voice_text=voice_text)
 
-    markup = InlineKeyboardMarkup().add(
-        InlineKeyboardButton("Ответ текстом", callback_data="text_response"),
-        InlineKeyboardButton("Ответ голосом", callback_data="voice_response")
-    )
+    markup = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Ответ текстом", callback_data="text_response")],
+        [InlineKeyboardButton(text="Ответ голосом", callback_data="voice_response")]
+    ])
+
     await message.answer("Как вы хотите получить ответ?", reply_markup=markup)
 
 
 @router.callback_query(F.data.in_({"text_response", "voice_response"}))
-async def process_callback(callback_query, state: FSMContext):
+async def process_callback(callback_query: CallbackQuery, state: FSMContext):
     data = callback_query.data
     state_data = await state.get_data()
     voice_text = state_data['voice_text']
