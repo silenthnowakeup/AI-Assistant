@@ -79,7 +79,21 @@ async def voice_handler(message: Message, bot: Bot, state: FSMContext):
     voice_file_path = await save_voice_message(message.voice, bot)
     voice_text = await transcription(voice_file_path)
     message_timestamp = int(message.date.timestamp())
-    await state.update_data(last_message_timestamp=message_timestamp, voice_text=voice_text)
+    await state.update_data(last_message_timestamp=message_timestamp, input_text=voice_text)
+
+    markup = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Ответ текстом", callback_data="text_response")],
+        [InlineKeyboardButton(text="Ответ голосом", callback_data="voice_response")]
+    ])
+
+    await message.answer("Как вы хотите получить ответ?", reply_markup=markup)
+
+
+@router.message(F.text)
+async def text_handler(message: Message, state: FSMContext):
+    input_text = message.text
+    message_timestamp = int(message.date.timestamp())
+    await state.update_data(last_message_timestamp=message_timestamp, input_text=input_text)
 
     markup = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Ответ текстом", callback_data="text_response")],
@@ -93,9 +107,9 @@ async def voice_handler(message: Message, bot: Bot, state: FSMContext):
 async def process_callback(callback_query: CallbackQuery, state: FSMContext):
     data = callback_query.data
     state_data = await state.get_data()
-    voice_text = state_data['voice_text']
+    input_text = state_data['input_text']
     message_timestamp = state_data['last_message_timestamp']
-    response_messages, thread_id = await response(voice_text, state, message_timestamp)
+    response_messages, thread_id = await response(input_text, state, message_timestamp)
 
     if data == "text_response":
         response_texts = [msg["text"] for msg in response_messages]
