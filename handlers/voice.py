@@ -2,8 +2,8 @@ from aiofiles import os
 
 from aiogram import Router, F, Bot
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, Voice, FSInputFile
-
+from aiogram.types import Message, Voice, FSInputFile, InlineKeyboardMarkup, InlineKeyboardButton
+import handlers.default
 from config import config
 from utils.openai_client import client, assistant_id
 
@@ -79,20 +79,32 @@ async def voice_handler(message: Message, bot: Bot, state: FSMContext):
     voice_file_path = await save_voice_message(message.voice, bot)
     voice_text = await transcription(voice_file_path)
     message_timestamp = int(message.date.timestamp())
+    await state.update_data(last_message_timestamp=message_timestamp, voice_text=voice_text)
+
+    markup = InlineKeyboardMarkup().add(
+        InlineKeyboardButton("Ответ текстом", callback_data="text_response"),
+        InlineKeyboardButton("Ответ голосом", callback_data="voice_response")
+    )
+    await message.answer("Как вы хотите получить ответ?", reply_markup=markup)
+
+
+@router.callback_query(F.data.in_({"text_response", "voice_response"}))
+async def process_callback(callback_query, state: FSMContext):
+    data = callback_query.data
+    state_data = await state.get_data()
+    voice_text = state_data['voice_text']
+    message_timestamp = state_data['last_message_timestamp']
     response_messages, thread_id = await response(voice_text, state, message_timestamp)
-    response_files_paths = await parse_messages_to_voices(response_messages, thread_id)
-    for response_file_path in response_files_paths:
-        await message.answer_voice(FSInputFile(response_file_path))
-        await os.remove(response_file_path)
-    await state.update_data(last_message_timestamp=message_timestamp)
 
+    if data == "text_response":
+        response_texts = [msg["text"] for msg in response_messages]
+        response_text = "\n".join(response_texts)
+        await callback_query.message.answer(response_text)
+    elif data == "voice_response":
+        response_files_paths = await parse_messages_to_voices(response_messages, thread_id)
+        for response_file_path in response_files_paths:
+            await callback_query.message.answer_voice(FSInputFile(response_file_path))
+            await os.remove(response_file_path)
 
-@router.message(F.text)
-async def text_handler(message: Message, state):
-    text = message.text
-    message_timestamp = int(message.date.timestamp())
-    response_messages, thread_id = await response(text, state, message_timestamp)
-    response_texts = [msg["text"] for msg in response_messages]
-    response_text = "\n".join(response_texts)
-    await message.answer(response_text)
     await state.update_data(last_message_timestamp=message_timestamp)
+    await callback_query.answer()
