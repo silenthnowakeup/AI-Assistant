@@ -59,6 +59,7 @@ async def response(text: str, state: FSMContext, message_timestamp: int):
 
     return messages, thread_id
 
+
 async def parse_messages_to_voices(messages, thread_id: str):
     files_paths = []
     for message in messages:
@@ -71,6 +72,7 @@ async def parse_messages_to_voices(messages, thread_id: str):
         )
         response.stream_to_file(file_path)
     return files_paths
+
 
 @router.message(F.voice)
 async def voice_handler(message: Message, bot: Bot, state: FSMContext):
@@ -86,6 +88,7 @@ async def voice_handler(message: Message, bot: Bot, state: FSMContext):
 
     await message.answer("Как вы хотите получить ответ?", reply_markup=markup)
 
+
 @router.message(F.text)
 async def text_handler(message: Message, state: FSMContext):
     input_text = message.text
@@ -98,6 +101,7 @@ async def text_handler(message: Message, state: FSMContext):
     ])
 
     await message.answer("Как вы хотите получить ответ?", reply_markup=markup)
+
 
 @router.callback_query(F.data.in_({"text_response", "voice_response"}))
 async def process_callback(callback_query: CallbackQuery, state: FSMContext, bot: Bot):
@@ -119,8 +123,12 @@ async def process_callback(callback_query: CallbackQuery, state: FSMContext, bot
 
     await state.update_data(last_message_timestamp=message_timestamp)
     await callback_query.answer()
-    await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
+    # Удаление сообщения с кнопками
+    try:
+        await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
+    except Exception as e:
+        print(f"Ошибка при удалении сообщения: {e}")
 
-# Не забудьте зарегистрировать все обработчики
+
 def register_handlers(dp):
     dp.include_router(router)
