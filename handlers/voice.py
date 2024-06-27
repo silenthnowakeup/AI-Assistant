@@ -100,7 +100,7 @@ async def text_handler(message: Message, state: FSMContext):
     await message.answer("Как вы хотите получить ответ?", reply_markup=markup)
 
 @router.callback_query(F.data.in_({"text_response", "voice_response"}))
-async def process_callback(callback_query: CallbackQuery, state: FSMContext):
+async def process_callback(callback_query: CallbackQuery, state: FSMContext, bot: Bot):
     data = callback_query.data
     state_data = await state.get_data()
     input_text = state_data.get('input_text', '')
@@ -119,6 +119,7 @@ async def process_callback(callback_query: CallbackQuery, state: FSMContext):
 
     await state.update_data(last_message_timestamp=message_timestamp)
     await callback_query.answer()
+    await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
 
 # Не забудьте зарегистрировать все обработчики
 def register_handlers(dp):
