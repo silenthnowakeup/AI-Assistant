@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, Voice, FSInputFile, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from config import config
 from utils.openai_client import client, assistant_id
-
+import asyncio
 router = Router()
 
 
@@ -142,6 +142,8 @@ async def process_callback(callback_query: CallbackQuery, state: FSMContext, bot
 
     await state.update_data(last_message_timestamp=message_timestamp)
     await callback_query.answer()
+
+    await asyncio.sleep(1)
     # Удаление сообщения с кнопками
     try:
         await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
