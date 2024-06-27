@@ -28,10 +28,10 @@ async def transcription(file_path: str) -> str:
 
 async def response(text: str, state: FSMContext, message_timestamp: int):
     state_data = await state.get_data()
+    thread_id = state_data.get("thread_id")
 
-    if (("last_message_timestamp" in state_data)
-            and ((message_timestamp - state_data["last_message_timestamp"]) <= config.thread_lifetime_sec)):
-        thread_id = state_data["thread_id"]
+    if thread_id and ((message_timestamp - state_data["last_message_timestamp"]) <= config.thread_lifetime_sec):
+        pass
     else:
         thread = await client.beta.threads.create()
         thread_id = thread.id
@@ -59,7 +59,6 @@ async def response(text: str, state: FSMContext, message_timestamp: int):
 
     return messages, thread_id
 
-
 async def parse_messages_to_voices(messages, thread_id: str):
     files_paths = []
     for message in messages:
@@ -72,7 +71,6 @@ async def parse_messages_to_voices(messages, thread_id: str):
         )
         response.stream_to_file(file_path)
     return files_paths
-
 
 @router.message(F.voice)
 async def voice_handler(message: Message, bot: Bot, state: FSMContext):
@@ -88,7 +86,6 @@ async def voice_handler(message: Message, bot: Bot, state: FSMContext):
 
     await message.answer("Как вы хотите получить ответ?", reply_markup=markup)
 
-
 @router.message(F.text)
 async def text_handler(message: Message, state: FSMContext):
     input_text = message.text
@@ -102,13 +99,12 @@ async def text_handler(message: Message, state: FSMContext):
 
     await message.answer("Как вы хотите получить ответ?", reply_markup=markup)
 
-
 @router.callback_query(F.data.in_({"text_response", "voice_response"}))
 async def process_callback(callback_query: CallbackQuery, state: FSMContext):
     data = callback_query.data
     state_data = await state.get_data()
-    input_text = state_data.get('input_text', '')  # Используем get() чтобы избежать KeyError
-    message_timestamp = state_data['last_message_timestamp']
+    input_text = state_data.get('input_text', '')
+    message_timestamp = state_data.get('last_message_timestamp', int(callback_query.message.date.timestamp()))
     response_messages, thread_id = await response(input_text, state, message_timestamp)
 
     if data == "text_response":
