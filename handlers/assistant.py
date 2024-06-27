@@ -3,19 +3,26 @@ from aiofiles import os
 from aiogram import Router, F, Bot
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, Voice, FSInputFile, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-import handlers.default
 from config import config
 from utils.openai_client import client, assistant_id
 
 router = Router()
 
 
+# Обработчик команды /start
+@router.message(F.text == "/start")
+async def start_handler(message: Message):
+    await message.answer("Привет! Отправь мне голосовое или текстовое сообщение, и я отвечу на любой вопрос.")
+
+
+# Сохранение голосового сообщения на диск
 async def save_voice_message(voice: Voice, bot: Bot) -> str:
     file_path = f"{config.audio_files_folder}/{voice.file_id}.ogg"
     await bot.download(voice, file_path)
     return file_path
 
 
+# Преобразование голосового сообщения в текст
 async def transcription(file_path: str) -> str:
     with open(file_path, "rb") as voice_file:
         transcription = await client.audio.transcriptions.create(
@@ -26,10 +33,12 @@ async def transcription(file_path: str) -> str:
     return transcription.text
 
 
+# Генерация ответа с помощью OpenAI API
 async def response(text: str, state: FSMContext, message_timestamp: int):
     state_data = await state.get_data()
     thread_id = state_data.get("thread_id")
 
+    # Проверка, существует ли активная сессия
     if thread_id and ((message_timestamp - state_data["last_message_timestamp"]) <= config.thread_lifetime_sec):
         pass
     else:
@@ -37,6 +46,7 @@ async def response(text: str, state: FSMContext, message_timestamp: int):
         thread_id = thread.id
         await state.update_data(thread_id=thread_id)
 
+    # Создание сообщения пользователя в сессии
     message = await client.beta.threads.messages.create(
         thread_id=thread_id,
         role="user",
@@ -44,11 +54,13 @@ async def response(text: str, state: FSMContext, message_timestamp: int):
     )
     user_message_id = message.id
 
+    # Запуск модели и ожидание ответа
     run = await client.beta.threads.runs.create_and_poll(
         thread_id=thread_id,
         assistant_id=assistant_id
     )
 
+    # Получение ответных сообщений от модели
     raw_messages = await client.beta.threads.messages.list(
         thread_id=thread_id,
         order="asc",
@@ -60,6 +72,7 @@ async def response(text: str, state: FSMContext, message_timestamp: int):
     return messages, thread_id
 
 
+# Преобразование текстовых сообщений в голосовые
 async def parse_messages_to_voices(messages, thread_id: str):
     files_paths = []
     for message in messages:
@@ -74,6 +87,7 @@ async def parse_messages_to_voices(messages, thread_id: str):
     return files_paths
 
 
+# Обработчик голосовых сообщений
 @router.message(F.voice)
 async def voice_handler(message: Message, bot: Bot, state: FSMContext):
     voice_file_path = await save_voice_message(message.voice, bot)
@@ -81,6 +95,7 @@ async def voice_handler(message: Message, bot: Bot, state: FSMContext):
     message_timestamp = int(message.date.timestamp())
     await state.update_data(last_message_timestamp=message_timestamp, input_text=voice_text)
 
+    # Отправка сообщения с кнопками выбора ответа
     markup = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Ответ текстом", callback_data="text_response")],
         [InlineKeyboardButton(text="Ответ голосом", callback_data="voice_response")]
@@ -89,12 +104,14 @@ async def voice_handler(message: Message, bot: Bot, state: FSMContext):
     await message.answer("Как вы хотите получить ответ?", reply_markup=markup)
 
 
+# Обработчик текстовых сообщений
 @router.message(F.text)
 async def text_handler(message: Message, state: FSMContext):
     input_text = message.text
     message_timestamp = int(message.date.timestamp())
     await state.update_data(last_message_timestamp=message_timestamp, input_text=input_text)
 
+    # Отправка сообщения с кнопками выбора ответа
     markup = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Ответ текстом", callback_data="text_response")],
         [InlineKeyboardButton(text="Ответ голосом", callback_data="voice_response")]
@@ -103,6 +120,7 @@ async def text_handler(message: Message, state: FSMContext):
     await message.answer("Как вы хотите получить ответ?", reply_markup=markup)
 
 
+# Обработчик нажатий на кнопки
 @router.callback_query(F.data.in_({"text_response", "voice_response"}))
 async def process_callback(callback_query: CallbackQuery, state: FSMContext, bot: Bot):
     data = callback_query.data
@@ -111,6 +129,7 @@ async def process_callback(callback_query: CallbackQuery, state: FSMContext, bot
     message_timestamp = state_data.get('last_message_timestamp', int(callback_query.message.date.timestamp()))
     response_messages, thread_id = await response(input_text, state, message_timestamp)
 
+    # Отправка ответа в текстовом или голосовом формате в зависимости от выбора
     if data == "text_response":
         response_texts = [msg["text"] for msg in response_messages]
         response_text = "\n".join(response_texts)
@@ -130,5 +149,6 @@ async def process_callback(callback_query: CallbackQuery, state: FSMContext, bot
         print(f"Ошибка при удалении сообщения: {e}")
 
 
+# Регистрация обработчиков
 def register_handlers(dp):
     dp.include_router(router)
