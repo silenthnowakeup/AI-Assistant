@@ -119,3 +119,7 @@ async def process_callback(callback_query: CallbackQuery, state: FSMContext):
 
     await state.update_data(last_message_timestamp=message_timestamp)
     await callback_query.answer()
+
+# Не забудьте зарегистрировать все обработчики
+def register_handlers(dp):
+    dp.include_router(router)
