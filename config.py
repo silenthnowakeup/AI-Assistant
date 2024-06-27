@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     openai_assistant_id: str
     create_openai_assistant: bool
     audio_files_folder: str
-
+    thread_lifetime_sec: int
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
 
 
