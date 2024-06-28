@@ -8,7 +8,7 @@ from config import config
 
 
 async def main():
-    bot = Bot(token=config.BOT_TOKEN)
+    bot = Bot(token=config.bot_token)
     dp = Dispatcher(storage=MemoryStorage())
 
     dp.include_router(values_router)
