@@ -1,25 +1,27 @@
-import asyncio
-import logging
-import os
-import sys
+# main.py
+
 from aiogram import Bot, Dispatcher
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
-from handlers import assistant
+from aiogram.types import BotCommand
+from handlers.values import router as values_router
 from config import config
 
-async def main():
-    bot = Bot(token=config.bot_token.get_secret_value(), default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-    dp = Dispatcher(storage=MemoryStorage())
-    dp.include_routers(assistant.router)
 
-    await bot.delete_webhook(drop_pending_updates=True)
+async def main():
+    bot = Bot(token=config.BOT_TOKEN)
+    dp = Dispatcher(storage=MemoryStorage())
+
+    dp.include_router(values_router)
+
+    await bot.set_my_commands([
+        BotCommand(command="start", description="Start the bot"),
+        BotCommand(command="define_values", description="Define your key values"),
+    ])
+
     await dp.start_polling(bot)
 
-if __name__ == "__main__":
-    if not os.path.exists(config.audio_files_folder):
-        os.makedirs(config.audio_files_folder)
 
-    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+if __name__ == "__main__":
+    import asyncio
+
     asyncio.run(main())
