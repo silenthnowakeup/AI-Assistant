@@ -25,8 +25,8 @@ async def handle_message(message: Message, state: FSMContext):
     input_text = message.text
     message_timestamp = int(message.date.timestamp())
     await state.update_data(last_message_timestamp=message_timestamp, input_text=input_text)
-
     is_valid = await validate_value(input_text)
+    print(f"Validation result for input '{input_text}': {is_valid}")
 
     if is_valid:
         await save_value(message.from_user.id, input_text)
