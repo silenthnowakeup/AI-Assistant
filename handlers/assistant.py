@@ -18,7 +18,7 @@ class AssistantStates(StatesGroup):
 
 
 async def save_voice_message(voice: Voice, bot: Bot) -> str:
-    await os.makedirs(config.audio_files_folder, exist_ok=True)
+    os.makedirs(config.audio_files_folder, exist_ok=True)
     file_path = f"{config.audio_files_folder}/{voice.file_id}.ogg"
     await bot.download(voice, file_path)
     return file_path
@@ -123,10 +123,11 @@ async def process_callback(callback_query: CallbackQuery, state: FSMContext, bot
         response_text = "\n".join(response_texts)
         await callback_query.message.answer(response_text)
     elif data == "voice_response":
+        os.makedirs(config.audio_files_folder, exist_ok=True)
         response_files_paths = await parse_messages_to_voices(response_messages, thread_id)
         for response_file_path in response_files_paths:
             await callback_query.message.answer_voice(FSInputFile(response_file_path))
-            await os.remove(response_file_path)
+            os.remove(response_file_path)
     await state.update_data(last_message_timestamp=message_timestamp)
     await callback_query.answer()
     await asyncio.sleep(1)
