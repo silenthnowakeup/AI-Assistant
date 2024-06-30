@@ -1,9 +1,7 @@
-import functools
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.state import StatesGroup, State
-from sqlalchemy.ext.asyncio import AsyncSession
 from database import AsyncSessionLocal
 from models import UserValue
 from openai import OpenAI
