@@ -40,7 +40,7 @@ async def save_value(user_id: int, value: str):
 @router.message(ValueStates.waiting_for_values)
 async def handle_message(message: Message, state: FSMContext):
     state_data = await state.get_data()
-    if state_data.get('mode') == 'define_values':
+    if state_data.get('mode') == 'save_value':
         input_text = message.text
         message_timestamp = int(message.date.timestamp())
         await state.update_data(last_message_timestamp=message_timestamp, input_text=input_text)
@@ -52,9 +52,9 @@ async def handle_message(message: Message, state: FSMContext):
             await message.answer("Пожалуйста, укажите корректные ключевые ценности.")
 
 
-@router.callback_query(F.data == "define_values")
+@router.callback_query(F.data == "save_value")
 async def define_values(callback_query: CallbackQuery, state: FSMContext):
-    await state.update_data(mode="define_values")
+    await state.update_data(mode="save_value")
     await state.set_state(ValueStates.waiting_for_values)
     await callback_query.message.answer("Пожалуйста, укажите ваши ключевые ценности.")
     await callback_query.answer()

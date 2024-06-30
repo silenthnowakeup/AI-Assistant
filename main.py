@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 async def start_handler(message: Message):
     markup = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Ключевые ценности", callback_data="define_values")],
+        [InlineKeyboardButton(text="Ключевые ценности", callback_data="save_value")],
         [InlineKeyboardButton(text="Виртуальный ассистент", callback_data="assistant_response")],
         [InlineKeyboardButton(text="Определить настроение", callback_data="detect_mood")]
     ])
