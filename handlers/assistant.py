@@ -8,6 +8,7 @@ from aiogram.enums import ContentType
 from aiogram.fsm.state import StatesGroup, State
 from utils.openai_client import client, assistant_id
 import asyncio
+import os
 
 router = Router()
 logger = logging.getLogger(__name__)
@@ -17,6 +18,7 @@ class AssistantStates(StatesGroup):
 
 
 async def save_voice_message(voice: Voice, bot: Bot) -> str:
+    await os.makedirs(config.audio_files_folder, exist_ok=True)
     file_path = f"{config.audio_files_folder}/{voice.file_id}.ogg"
     await bot.download(voice, file_path)
     return file_path
