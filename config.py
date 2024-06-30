@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     audio_files_folder: str
     thread_lifetime_sec: int
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
+    amplitude_api_key: SecretStr
+    database_url: str
 
 
 config = Settings()
