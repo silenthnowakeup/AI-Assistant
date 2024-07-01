@@ -73,6 +73,7 @@ def send_event(user_id: int, event_name: str, event_properties: dict):
 
 
 async def download_file(file_url, file_path):
+    os.makedirs('images', exist_ok=True)
     async with aiohttp.ClientSession() as session:
         async with session.get(file_url) as response:
             if response.status == 200:
