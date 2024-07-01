@@ -73,7 +73,6 @@ def send_event(user_id: int, event_name: str, event_properties: dict):
 
 
 async def download_file(file_url, file_path):
-    os.makedirs('images', exist_ok=True)
     async with aiohttp.ClientSession() as session:
         async with session.get(file_url) as response:
             if response.status == 200:
@@ -88,7 +87,7 @@ async def handle_photo(message: Message, state: FSMContext, bot: Bot):
     file_id = message.photo[-1].file_id
     file_info = await bot.get_file(file_id)
     file_url = f"https://api.telegram.org/file/bot{bot.token}/{file_info.file_path}"
-
+    os.makedirs('images', exist_ok=True)
     file_path = f"images/{file_id}.jpg"
 
     try:
