@@ -1,5 +1,4 @@
 import logging
-import requests
 import os
 from aiogram import Router, F, Bot
 from aiogram.fsm.context import FSMContext
@@ -11,6 +10,7 @@ from amplitude.event import BaseEvent
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
 import base64
+import aiohttp  # для асинхронных HTTP-запросов
 from config import config
 
 # Инициализация Amplitude
@@ -18,7 +18,7 @@ amplitude_api_key = config.amplitude_api_key.get_secret_value()
 amplitude = Amplitude(amplitude_api_key)
 
 # Создание единственного экземпляра ThreadPoolExecutor
-executor = ThreadPoolExecutor(max_workers=5)
+executor = ThreadPoolExecutor(max_workers=1)
 
 
 class MoodStates(StatesGroup):
@@ -72,21 +72,27 @@ def send_event(user_id: int, event_name: str, event_properties: dict):
     amplitude.track(event)
 
 
+async def download_file(file_url, file_path):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(file_url) as response:
+            if response.status == 200:
+                with open(file_path, 'wb') as file:
+                    file.write(await response.read())
+            else:
+                raise Exception(f"Failed to download file with status {response.status}")
+
+
 @router.message(MoodStates.waiting_for_photo, F.content_type == ContentType.PHOTO)
 async def handle_photo(message: Message, state: FSMContext, bot: Bot):
     file_id = message.photo[-1].file_id
     file_info = await bot.get_file(file_id)
     file_url = f"https://api.telegram.org/file/bot{bot.token}/{file_info.file_path}"
 
-    # Скачивание файла
-    file_response = requests.get(file_url)
-    if file_response.status_code == 200:
-        file_path = f"images/{file_id}.jpg"
+    file_path = f"images/{file_id}.jpg"
 
-        # Сохранение файла
-        os.makedirs("images", exist_ok=True)
-        with open(file_path, "wb") as file:
-            file.write(file_response.content)
+    try:
+        # Скачивание файла асинхронно
+        await download_file(file_url, file_path)
 
         # Шифрование файла
         encoded_image = encode_image(file_path)
@@ -99,10 +105,13 @@ async def handle_photo(message: Message, state: FSMContext, bot: Bot):
         loop = asyncio.get_event_loop()
         loop.run_in_executor(executor, send_event, message.from_user.id, "mood_detected", {"mood": mood})
 
+    except Exception as e:
+        logging.error(f"Error handling photo: {e}")
+        await message.answer("Произошла ошибка при обработке вашего фото. Пожалуйста, попробуйте снова.")
+    finally:
         # Удаление файла после использования
-        os.remove(file_path)
-    else:
-        await message.answer("Не удалось скачать фото. Попробуйте снова.")
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
 
 @router.callback_query(F.data == "detect_mood")

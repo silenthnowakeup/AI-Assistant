@@ -6,28 +6,15 @@ from database import AsyncSessionLocal
 from models import UserValue
 from openai import OpenAI
 from config import config
+import json
+
+router = Router()
 
 client = OpenAI(api_key=config.openai_api_key.get_secret_value())
-router = Router()
+
 
 class ValueStates(StatesGroup):
     waiting_for_values = State()
-
-async def validate_value(input_text):
-    try:
-        response = client.chat.completions.create(model="gpt-4o",
-                                                  messages=[
-                                                      {"role": "system",
-                                                       "content": "Вы являетесь помощником, который проверяет, являются ли предоставленные значения ключевыми ценностями человека. Ответь «true», если значение допустимо, и «false», если нет."},
-                                                      {"role": "user",
-                                                       "content": f"Проверьте значение: {input_text}. Ответьте 'true', если значение корректное и значимое, и 'false', если нет."}
-                                                  ])
-
-        validation = response.choices[0].message.content.strip().lower()
-        return validation == "true"
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return False
 
 
 async def save_value(user_id: int, value: str):
@@ -39,17 +26,53 @@ async def save_value(user_id: int, value: str):
 
 @router.message(ValueStates.waiting_for_values)
 async def handle_message(message: Message, state: FSMContext):
-    state_data = await state.get_data()
-    if state_data.get('mode') == 'save_value':
-        input_text = message.text
-        message_timestamp = int(message.date.timestamp())
-        await state.update_data(last_message_timestamp=message_timestamp, input_text=input_text)
-        is_valid = await validate_value(input_text)
-        if is_valid:
-            await save_value(message.from_user.id, input_text)
-            await message.answer("Ваши ключевые ценности успешно сохранены!")
-        else:
-            await message.answer("Пожалуйста, укажите корректные ключевые ценности.")
+    input_text = message.text
+    user_id = message.from_user.id
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system",
+                 "content": "Вы помощник, который определяет ключевые личные ценности в тексте и сохраняет их."},
+                {"role": "user",
+                 "content": f"Определите ключевые ценности в следующем тексте и сохраните их: {input_text}"}
+            ],
+            functions=[
+                {
+                    "name": "save_value",
+                    "description": "Сохранить определенную ключевую ценность для пользователя",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "user_id": {
+                                "type": "integer",
+                                "description": "ID пользователя"
+                            },
+                            "value": {
+                                "type": "string",
+                                "description": "Ключевая ценность для сохранения"
+                            }
+                        },
+                        "required": ["user_id", "value"]
+                    }
+                }
+            ],
+            function_call="auto"
+        )
+        print(response.choices[0].message)
+        # Проверка, вызвана ли функция
+        function_call = response.choices[0].message.function_call
+        if function_call:
+            if function_call.name == "save_value":
+                arguments = json.loads(function_call.arguments)
+                value = arguments["value"]
+                await save_value(user_id, value)
+                await message.answer(f"Ваша ключевая ценность '{value}' успешно сохранена!")
+
+    except Exception as e:
+        print(f"Произошла ошибка: {e}")
+        await message.answer("Произошла ошибка при обработке вашего запроса. Пожалуйста, попробуйте еще раз.")
 
 
 @router.callback_query(F.data == "save_value")
