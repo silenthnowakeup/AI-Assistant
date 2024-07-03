@@ -36,12 +36,12 @@ async def handle_message(message: Message, state: FSMContext):
                 {"role": "system",
                  "content": "Вы помощник, который определяет ключевые личные ценности в тексте и сохраняет их."},
                 {"role": "user",
-                 "content": f"Определите ключевые ценности в следующем тексте и сохраните их: {input_text}"}
+                 "content": f"Определите все ключевые ценности в следующем тексте и сохраните их: {input_text}"}
             ],
             functions=[
                 {
                     "name": "save_value",
-                    "description": "Сохранить определенную ключевую ценность для пользователя",
+                    "description": "Сохранить определенные ключевые ценности для пользователя",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -51,7 +51,7 @@ async def handle_message(message: Message, state: FSMContext):
                             },
                             "value": {
                                 "type": "string",
-                                "description": "Ключевая ценность для сохранения"
+                                "description": "Ключевые ценности для сохранения"
                             }
                         },
                         "required": ["user_id", "value"]
