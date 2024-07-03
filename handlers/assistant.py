@@ -13,6 +13,7 @@ import os
 router = Router()
 logger = logging.getLogger(__name__)
 
+
 class AssistantStates(StatesGroup):
     active = State()
 
